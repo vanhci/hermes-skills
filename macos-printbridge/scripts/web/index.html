@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>打印机 · Canon TS8080</title>
+<style>
+  :root{ --bg:#f5f5f7; --card:#fff; --fg:#1d1d1f; --mut:#86868b;
+         --acc:#0071e3; --ok:#34c759; --err:#ff3b30; --br:16px;
+         --seg-bg:#f2f2f4; --seg-brd:#e2e2e5; }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#1c1c1e; --card:#2c2c2e; --fg:#f5f5f7; --mut:#98989f;
+           --acc:#0a84ff; --seg-bg:#3a3a3c; --seg-brd:#48484a; }
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html,body{ height:100%; }
+  body{ font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue",sans-serif;
+        background:var(--bg); color:var(--fg); min-height:100vh;
+        display:flex; align-items:center; justify-content:center; padding:16px; }
+  .card{ background:var(--card); border-radius:var(--br); padding:24px 20px;
+         width:100%; max-width:440px; box-shadow:0 4px 24px rgba(0,0,0,.08); }
+  .sub{ color:var(--mut); font-size:13px; margin-bottom:16px; }
+  #drop{ border:2px dashed #c7c7cc; border-radius:12px; padding:22px 12px;
+         text-align:center; cursor:pointer; transition:.2s; margin-bottom:14px; }
+  @media (prefers-color-scheme: dark){ #drop{ border-color:#48484a; } }
+  #drop:hover,#drop.drag{ border-color:var(--acc); background:rgba(10,132,255,.06); }
+  #drop .big{ font-size:30px; margin-bottom:6px; }
+  .hint{ font-size:14px; color:var(--mut); }
+  .fname{ font-weight:600; word-break:break-all; margin-top:4px; font-size:14px; }
+  .fmeta{ color:var(--mut); font-size:12px; }
+  .opt{ display:flex; align-items:center; justify-content:space-between;
+        gap:12px; margin-bottom:12px; }
+  .label{ font-size:14px; width:52px; flex-shrink:0; }
+  .seg{ display:flex; background:var(--seg-bg); border:1px solid var(--seg-brd);
+        border-radius:10px; overflow:hidden; flex:1; }
+  .seg button{ flex:1; padding:8px 6px; border:none; background:transparent;
+        color:var(--fg); font-size:13px; cursor:pointer; white-space:nowrap; }
+  .seg button.active{ background:var(--acc); color:#fff; font-weight:600; }
+  .stepper{ display:flex; align-items:center; gap:10px; }
+  .stepper button{ width:34px; height:34px; border-radius:9px; border:1px solid var(--seg-brd);
+        background:var(--seg-bg); color:var(--fg); font-size:18px; cursor:pointer; }
+  .stepper span{ font-size:16px; font-weight:600; min-width:36px; text-align:center; }
+  #btn{ width:100%; padding:14px; border:none; border-radius:12px;
+        background:var(--acc); color:#fff; font-size:16px; font-weight:600;
+        cursor:pointer; transition:.2s; margin-top:4px; }
+  #btn:not(:disabled):active{ transform:scale(.97); }
+  #btn:disabled{ opacity:.5; cursor:not-allowed; }
+  #status{ margin-top:14px; font-size:14px; min-height:20px; text-align:center; }
+  .ok{ color:var(--ok); } .err{ color:var(--err); } .mut{ color:var(--mut); }
+  input[type=file]{ display:none; }
+  .foot{ margin-top:16px; color:var(--mut); font-size:11px; text-align:center; }
+  .row2{ display:flex; gap:12px; margin-bottom:12px; }
+  .row2 .opt{ flex:1; margin-bottom:0; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="sub" style="margin-top:0;display:flex;align-items:center;gap:6px;">
+    🖨️ Canon TS8080
+    <span id="pstatus" style="display:inline-flex;align-items:center;gap:4px;font-size:12px;">
+      <span id="pdot" style="width:8px;height:8px;border-radius:50%;background:#999;"></span>
+      <span id="ptxt">查询中…</span>
+    </span>
+  </div>
+  <div style="color:var(--mut);font-size:12px;margin-bottom:14px;">上传文件直接打印</div>
+
+  <div id="drop">
+    <div class="big">📄</div>
+    <div class="hint" id="hint">点击或拖拽文件到这里</div>
+    <div class="fname" id="fname"></div>
+    <div class="fmeta" id="fmeta"></div>
+  </div>
+  <input type="file" id="file" accept=".pdf,.doc,.docx,.txt,.md,.rtf,.jpg,.jpeg,.png,.heic,.webp,.bmp,.tiff,.gif,.ps">
+
+  <div class="opt">
+    <span class="label">份数</span>
+    <div class="stepper">
+      <button id="dec" type="button">−</button>
+      <span id="cnt">1</span>
+      <button id="inc" type="button">＋</button>
+    </div>
+  </div>
+
+  <div class="opt">
+    <span class="label">颜色</span>
+    <div class="seg" data-val="color">
+      <button data-v="color" class="active">彩色</button>
+      <button data-v="gray">黑白</button>
+    </div>
+  </div>
+
+  <div class="opt">
+    <span class="label">双面</span>
+    <div class="seg" data-val="off">
+      <button data-v="off" class="active">单面</button>
+      <button data-v="long">长边</button>
+      <button data-v="short">短边</button>
+    </div>
+  </div>
+
+  <div class="opt">
+    <span class="label">纸张</span>
+    <div class="seg" data-val="A4">
+      <button data-v="A4" class="active">A4</button>
+      <button data-v="A5">A5</button>
+      <button data-v="Letter">Letter</button>
+      <button data-v="4x6">4×6照片</button>
+      <button data-v="5x7">5×7</button>
+      <button data-v="B5">B5</button>
+    </div>
+  </div>
+
+  <div class="opt">
+    <span class="label">介质</span>
+    <div class="seg" data-val="plain">
+      <button data-v="plain" class="active">普通</button>
+      <button data-v="photo">相纸</button>
+      <button data-v="envelope">信封</button>
+    </div>
+  </div>
+
+  <div class="opt">
+    <span class="label">质量</span>
+    <div class="seg" data-val="normal">
+      <button data-v="draft">草稿</button>
+      <button data-v="normal" class="active">标准</button>
+      <button data-v="high">高</button>
+    </div>
+  </div>
+
+  <button id="btn" disabled>打印</button>
+  <div id="status" class="mut">选择文件后即可打印</div>
+  <div class="foot">Canon TS8080 · 局域网打印</div>
+</div>
+
+<script>
+const drop=document.getElementById('drop'), fileInput=document.getElementById('file'),
+      btn=document.getElementById('btn'), st=document.getElementById('status'),
+      fname=document.getElementById('fname'), fmeta=document.getElementById('fmeta'),
+      hint=document.getElementById('hint'), cnt=document.getElementById('cnt');
+let curFile=null, copies=1;
+
+drop.addEventListener('click', ()=>fileInput.click());
+drop.addEventListener('dragover', e=>{ e.preventDefault(); drop.classList.add('drag'); });
+drop.addEventListener('dragleave', ()=>drop.classList.remove('drag'));
+drop.addEventListener('drop', e=>{ e.preventDefault(); drop.classList.remove('drag');
+  if(e.dataTransfer.files.length) setFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', ()=>{ if(fileInput.files.length) setFile(fileInput.files[0]); });
+
+function setFile(f){
+  curFile=f; btn.disabled=false;
+  fname.textContent=f.name;
+  fmeta.textContent=(f.size/1024/1024).toFixed(2)+' MB · '+(f.type||f.name.split('.').pop()||'');
+  hint.style.display='none';
+  st.textContent=''; st.className='mut';
+}
+document.getElementById('inc').onclick=()=>{ if(copies<99){ copies++; cnt.textContent=copies; } };
+document.getElementById('dec').onclick=()=>{ if(copies>1){ copies--; cnt.textContent=copies; } };
+
+document.querySelectorAll('.seg').forEach(seg=>{
+  seg.querySelectorAll('button').forEach(b=>{
+    b.onclick=()=>{
+      seg.querySelectorAll('button').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      seg.dataset.val=b.dataset.v;
+    };
+  });
+});
+
+function optVal(sel){ return document.querySelector(sel).dataset.val; }
+
+// 打印机状态轮询
+const pdot=document.getElementById('pdot'), ptxt=document.getElementById('ptxt');
+async function pollStatus(){
+  try{
+    const r=await fetch('/status'); const j=await r.json();
+    ptxt.textContent=j.detail||j.status;
+    if(j.online){ pdot.style.background='#34c759'; }
+    else if(j.detail==='缺纸'){ pdot.style.background='#ff3b30'; }
+    else{ pdot.style.background='#ff9500'; }
+  }catch(e){ pdot.style.background='#999'; ptxt.textContent='离线'; }
+}
+pollStatus(); setInterval(pollStatus, 30000);
+
+btn.addEventListener('click', async()=>{
+  if(!curFile) return;
+  btn.disabled=true; st.textContent='📤 发送中…'; st.className='mut';
+  const fd=new FormData();
+  fd.append('file', curFile);
+  fd.append('copies', copies);
+  fd.append('color',   optVal('.seg[data-val="color"]'));
+  fd.append('duplex',  optVal('.seg[data-val="off"]'));
+  fd.append('media',   optVal('.seg[data-val="A4"]'));
+  fd.append('paper',   optVal('.seg[data-val="plain"]'));
+  fd.append('quality', optVal('.seg[data-val="normal"]'));
+  try{
+    const r=await fetch('/print',{method:'POST',body:fd});
+    const j=await r.json();
+    if(r.ok && j.ok){
+      st.textContent=`✅ 已打印 ${j.copies} 份 · ${j.color==='gray'?'黑白':'彩色'} · 作业 ${j.job} · ${j.elapsed}s`;
+      st.className='ok';
+    }else{
+      st.textContent='❌ '+(j.detail||'打印失败'); st.className='err';
+    }
+  }catch(e){
+    st.textContent='❌ 网络错误: '+e.message; st.className='err';
+  }
+  btn.disabled=false;
+});
+</script>
+</body>
+</html>

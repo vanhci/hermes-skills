@@ -10,6 +10,7 @@
 | Skill | 说明 |
 |-------|------|
 | `home-assistant-smart-home` | 全屋智能接入 Home Assistant 完整流程：部署、多品牌设备接入、App 逆向、仪表盘布局、AI 助手接管 |
+| `macos-printbridge` | Mac 打印桥：老打印机接入 CUPS + 公网打印页 + HA 面板整合。云打印服务停止后的低成本远程打印方案 |
 
 ## 使用方式
 

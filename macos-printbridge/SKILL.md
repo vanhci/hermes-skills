@@ -185,6 +185,18 @@ async def add_print_view(ha_url, token):
 
 **注意**：非 A4 纸张（A5、相纸等）需先手动装入打印机纸盒，否则作业会排队等待。
 
+## 支持的文件格式
+
+后端白名单：`.pdf .txt .md .doc .docx .rtf .jpg .jpeg .png .heic .webp .bmp .tiff .gif .ps .conf .cfg .ini .yml .yaml .json .csv .log`
+
+文本类文件（txt/md/conf/yml/json/csv/log 等）通过 `cupsfilter -m application/pdf` 自动转换。前端 `<input accept>` 需同步更新。
+
+## 前端 UI 注意事项
+
+- **HA iframe 高度**：sections 视图的 grid 卡片会裁剪 iframe 内容 → 用 `type: "panel"` 全屏模式
+- **并排选项对齐**：`.label` 用固定宽度（`width:52px; flex-shrink:0`），不要用 `min-width`（flex 布局下实际宽度不一致）
+- **fetch 超时**：公网访问可能延迟 → 加 `AbortController` 30秒超时，避免前端卡在"发送中…"
+
 ## 排障
 
 | 问题 | 排查 |
@@ -193,6 +205,8 @@ async def add_print_view(ha_url, token):
 | 公网访问 502 | 检查 cloudflared 隧道：`curl https://<ha-domain>/` 看 HA 是否正常 |
 | launchd 服务启动失败 | 查日志：`cat /tmp/printbridge.err.log`；常见原因：python 路径错误、uvicorn 未安装 |
 | 打印机状态一直显示"离线" | 打印机可能休眠：发送一个测试打印作业唤醒（`echo test \| lp -d <printer-name>`）|
+| 固件更新后打印卡住 | 打印机 IP 可能变了：`ping <old-ip>` 不通 → 扫描新 IP → `lpadmin -p <name> -v ipp://<new-ip>:631/ipp/print -E` |
+| 前端"发送中"卡住无响应 | 检查文件类型是否在白名单；公网访问加 30s AbortController 超时 |
 | HA 视图不显示 | 检查 WebSocket API 返回：`save: true` 表示成功，刷新 HA 页面 |
 
 ## References
